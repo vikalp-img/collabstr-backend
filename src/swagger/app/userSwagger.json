@@ -1,0 +1,967 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "App User API",
+    "description": "Fractional Real Estate - App user routes API documentation",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1/user",
+      "description": "User API base path"
+    },
+    {
+      "url": "/api/v1/property",
+      "description": "Property API base path"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check"
+    },
+    {
+      "name": "Auth",
+      "description": "Login and registration"
+    },
+    {
+      "name": "Profile",
+      "description": "User profile management"
+    },
+    {
+      "name": "Wallet",
+      "description": "User wallet"
+    },
+    {
+      "name": "KYC",
+      "description": "KYC verification (PAN, Aadhaar, Bank, Email)"
+    },
+    {
+      "name": "Property",
+      "description": "Property and share purchase"
+    }
+  ],
+  "paths": {
+    "/buyShares": {
+      "post": {
+        "tags": ["Property"],
+        "summary": "Buy shares",
+        "description": "Purchase fractional shares of a property. Deducts amount from user wallet; share count must be >= property minimumShares and <= availableShares. Requires authentication.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["propertyId", "share"],
+                "properties": {
+                  "propertyId": {
+                    "type": "string",
+                    "description": "Property ID (MongoDB ObjectId)"
+                  },
+                  "share": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of shares to buy (must be >= property minimumShares)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shares bought successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (Property not found, Insufficient balance/shares, Minimum shares not met)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/index": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "description": "Returns a simple message to verify API routes are working.",
+        "responses": {
+          "200": {
+            "description": "API is working",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "api routes working properly ❤"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login",
+        "description": "Send OTP to user mobile for login.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mobile"
+                ],
+                "properties": {
+                  "mobile": {
+                    "type": "integer",
+                    "description": "User mobile number"
+                  },
+                  "userName": {
+                    "type": "string",
+                    "description": "Optional username"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Optional email"
+                  },
+                  "userType": {
+                    "type": "string",
+                    "description": "Optional user type"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent or login response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verifyOtpAndRegister": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify OTP and register",
+        "description": "Verify OTP and complete user registration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mobile",
+                  "otp"
+                ],
+                "properties": {
+                  "mobile": {
+                    "type": "integer",
+                    "minLength": 6,
+                    "maxLength": 16,
+                    "description": "User mobile number"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "description": "OTP received on mobile"
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Optional device ID"
+                  },
+                  "ip": {
+                    "type": "string",
+                    "description": "Optional IP address"
+                  },
+                  "fcmToken": {
+                    "type": "string",
+                    "description": "Optional FCM token for push notifications"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified and user registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / Invalid OTP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resendOtp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Resend OTP",
+        "description": "Resend OTP to the given mobile number. No authentication required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["mobile"],
+                "properties": {
+                  "mobile": {
+                    "type": "integer",
+                    "description": "User mobile number (must be already registered)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP resent successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logout": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Logout",
+        "description": "Log out the user and clear token/FCM. Requires authentication.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/editProfile": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Edit profile",
+        "description": "Update user profile (username, dob, email, gender, location). Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userName"
+                ],
+                "properties": {
+                  "userName": {
+                    "type": "string",
+                    "description": "Display name"
+                  },
+                  "dob": {
+                    "type": "string",
+                    "description": "Date of birth"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "object",
+                    "description": "Location object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/updateProfile": {
+      "post": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Update profile with image",
+        "description": "Update user profile with optional profile image upload. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile_image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Profile image file"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/getUserDetails": {
+      "get": {
+        "tags": [
+          "Profile"
+        ],
+        "summary": "Get user details",
+        "description": "Get authenticated user details. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallet": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallet",
+        "description": "Get authenticated user wallet balance and details. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requestPanKyc": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Request PAN KYC",
+        "description": "Submit PAN number for KYC verification. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "pan_number"
+                ],
+                "properties": {
+                  "pan_number": {
+                    "type": "string",
+                    "description": "PAN number"
+                  },
+                  "pan_name": {
+                    "type": "string",
+                    "description": "Name as on PAN card (optional)"
+                  },
+                  "pan_dob": {
+                    "type": "string",
+                    "description": "Date of birth as on PAN (optional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PAN KYC request submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requestAadhaarKyc": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Request Aadhaar KYC",
+        "description": "Submit Aadhaar number for KYC verification. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "aadhar_number"
+                ],
+                "properties": {
+                  "aadhar_number": {
+                    "type": "string",
+                    "description": "Aadhaar number"
+                  },
+                  "aadhar_name": {
+                    "type": "string",
+                    "description": "Name as on Aadhaar (optional)"
+                  },
+                  "manualKyc": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, mark as manual KYC flow (optional)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aadhaar KYC request submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requestBankKyc": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Request Bank KYC",
+        "description": "Submit bank account details for KYC verification. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "accountholder",
+                  "accno",
+                  "ifsc"
+                ],
+                "properties": {
+                  "accountholder": {
+                    "type": "string",
+                    "description": "Account holder name"
+                  },
+                  "accno": {
+                    "type": "string",
+                    "description": "Account number"
+                  },
+                  "ifsc": {
+                    "type": "string",
+                    "description": "IFSC code"
+                  },
+                  "bankname": {
+                    "type": "string"
+                  },
+                  "bankbranch": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bank KYC request submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requestEmailVerify": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Request email verification",
+        "description": "Send OTP to email for verification. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent to email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/verifyEmailOtp": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Verify email OTP",
+        "description": "Verify OTP sent to email. Requires authentication.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / Invalid OTP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token from login / verifyOtpAndRegister"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      }
+    }
+  }
+}
